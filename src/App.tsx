@@ -1,14 +1,30 @@
-import { useState } from "react";
-import { filterBooks, removeBook, toggleRead } from "./books";
+import { useEffect, useState } from "react";
+import {
+  addBook,
+  filterBooks,
+  loadBooks,
+  removeBook,
+  saveBooks,
+  toggleRead,
+  validateNewBook,
+} from "./books";
+import AddBookForm from "./components/AddBookForm";
+import type { NewBookInput } from "./components/AddBookForm";
 import BookList from "./components/BookList";
 import Stats from "./components/Stats";
 import { initialBooks } from "./data";
 import type { Book, GenreFilter } from "./types";
 
 export default function App() {
-  const [books, setBooks] = useState<Book[]>(initialBooks);
+  const [books, setBooks] = useState<Book[]>(() =>
+    loadBooks(localStorage, initialBooks)
+  );
   const [genre, setGenre] = useState<GenreFilter>("all");
   const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    saveBooks(localStorage, books);
+  }, [books]);
 
   const visibleBooks = filterBooks(books, { genre, query });
 
@@ -18,6 +34,24 @@ export default function App() {
 
   function handleRemove(id: string) {
     setBooks(removeBook(books, id));
+  }
+
+  function handleAdd({ title, author, genre, rating }: NewBookInput) {
+    const result = validateNewBook(books, { title, author });
+    if (!result.ok) {
+      return result.error;
+    }
+    setBooks(
+      addBook(books, {
+        id: crypto.randomUUID(),
+        title: result.title,
+        author: result.author,
+        genre,
+        rating,
+        isRead: false,
+      })
+    );
+    return null;
   }
 
   return (
@@ -47,6 +81,7 @@ export default function App() {
         </label>
       </div>
       <Stats books={books} />
+      <AddBookForm onAdd={handleAdd} />
       <BookList
         books={visibleBooks}
         onToggleRead={handleToggleRead}

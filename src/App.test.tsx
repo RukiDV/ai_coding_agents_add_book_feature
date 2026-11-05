@@ -48,4 +48,55 @@ describe("App", () => {
     expect(within(stats).queryByText("NaN")).toBeNull();
     expect(stats).toHaveTextContent("Average rating: 4");
   });
+
+  async function addBookViaForm(
+    user: ReturnType<typeof userEvent.setup>,
+    title: string,
+    author: string
+  ) {
+    await user.type(screen.getByLabelText("Title"), title);
+    await user.type(screen.getByLabelText("Author"), author);
+    await user.click(screen.getByRole("button", { name: "Add book" }));
+  }
+
+  test("adds a new unread book, updates the stats and clears the form", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await addBookViaForm(user, "  Emma ", "Jane Austen");
+    expect(screen.getByRole("heading", { name: "Emma" })).toBeInTheDocument();
+    expect(screen.getByText(/2 of 6 read/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Title")).toHaveValue("");
+    expect(screen.getByLabelText("Author")).toHaveValue("");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("shows an error and adds nothing for empty fields", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await addBookViaForm(user, "   ", "Someone");
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(5);
+  });
+
+  test("rejects a duplicate but allows the same title by another author", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await addBookViaForm(user, "dune", "frank herbert");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "This book is already on your shelf."
+    );
+    await user.clear(screen.getByLabelText("Author"));
+    await user.type(screen.getByLabelText("Author"), "Someone Else");
+    await user.click(screen.getByRole("button", { name: "Add book" }));
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(6);
+  });
+
+  test("keeps added books after a reload", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<App />);
+    await addBookViaForm(user, "Emma", "Jane Austen");
+    unmount();
+    render(<App />);
+    expect(screen.getByRole("heading", { name: "Emma" })).toBeInTheDocument();
+  });
 });
