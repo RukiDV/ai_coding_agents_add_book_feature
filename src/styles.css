@@ -57,3 +57,11 @@ main {
 .stats {
   opacity: 0.7;
 }
+
+.add-book {
+  margin-bottom: 1rem;
+}
+
+.add-book [role="alert"] {
+  color: #b00020;
+}
